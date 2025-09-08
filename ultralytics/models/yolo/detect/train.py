@@ -15,7 +15,7 @@ from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.models import yolo
 from ultralytics.nn.tasks import DetectionModel
-from ultralytics.utils import LOGGER, RANK
+from ultralytics.utils import DEFAULT_CFG, LOGGER, RANK
 from ultralytics.utils.patches import override_configs
 from ultralytics.utils.plotting import plot_images, plot_labels, plot_results
 from ultralytics.utils.torch_utils import torch_distributed_zero_first, unwrap_model
@@ -53,6 +53,18 @@ class DetectionTrainer(BaseTrainer):
         >>> trainer = DetectionTrainer(overrides=args)
         >>> trainer.train()
     """
+
+    def __init__(self, cfg=DEFAULT_CFG, overrides: dict[str, Any] | None = None, _callbacks=None):
+        """
+        Initialize a DetectionTrainer object for training YOLO object detection model training.
+
+        Args:
+            cfg (dict, optional): Default configuration dictionary containing training parameters.
+            overrides (dict, optional): Dictionary of parameter overrides for the default configuration.
+            _callbacks (list, optional): List of callback functions to be executed during training.
+        """
+        super().__init__(cfg, overrides, _callbacks)
+        self.dynamic_tensors = ["batch_idx", "cls", "bboxes"]
 
     def build_dataset(self, img_path: str, mode: str = "train", batch: int | None = None):
         """
@@ -126,6 +138,10 @@ class DetectionTrainer(BaseTrainer):
                 ]  # new shape (stretched to gs-multiple)
                 imgs = nn.functional.interpolate(imgs, size=ns, mode="bilinear", align_corners=False)
             batch["img"] = imgs
+
+        if self.args.compile:
+            for k in self.dynamic_tensors:
+                torch._dynamo.maybe_mark_dynamic(batch[k], 0)
         return batch
 
     def set_model_attributes(self):

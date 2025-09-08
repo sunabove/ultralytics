@@ -414,8 +414,6 @@ class BaseTrainer:
                 # Forward
                 with autocast(self.amp):
                     batch = self.preprocess_batch(batch)
-                    if self.args.compile:
-                        self.mark_dynamic(batch)
                     metadata = {k: batch.pop(k, None) for k in ["im_file", "ori_shape", "resized_shape"]}
                     loss, self.loss_items = self.model(batch)
                     self.loss = loss.sum()
