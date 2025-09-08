@@ -676,7 +676,7 @@ class ModelEMA:
             tau (int, optional): EMA decay time constant.
             updates (int, optional): Initial number of updates.
         """
-        self.ema = deepcopy(unwrap_model(model)).eval()  # FP32 EMA
+        self.ema = deepcopy(unwrap_model(model) if not hasattr(model, "_orig_mod") else model).eval()  # FP32 EMA
         self.updates = updates  # number of EMA updates
         self.decay = lambda x: decay * (1 - math.exp(-x / tau))  # decay exponential ramp (to help early epochs)
         for p in self.ema.parameters():
@@ -694,7 +694,7 @@ class ModelEMA:
             self.updates += 1
             d = self.decay(self.updates)
 
-            msd = unwrap_model(model).state_dict()  # model state_dict
+            msd = (unwrap_model(model) if not hasattr(model, "_orig_mod") else model).state_dict()  # model state_dict
             for k, v in self.ema.state_dict().items():
                 if v.dtype.is_floating_point:  # true for FP16 and FP32
                     v *= d
