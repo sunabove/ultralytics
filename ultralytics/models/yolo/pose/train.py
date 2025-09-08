@@ -126,4 +126,4 @@ class PoseTrainer(yolo.detect.DetectionTrainer):
     def mark_dynamic(self, batch):
         """Mark tensors as dynamic for compiled model."""
         super().mark_dynamic(batch)
-        torch._dynamo.decorators.mark_unbacked(batch["keypoints"], 0)
+        torch._dynamo.maybe_mark_dynamic(batch["keypoints"], 0)

@@ -247,6 +247,6 @@ class DetectionTrainer(BaseTrainer):
 
     def mark_dynamic(self, batch):
         """Mark tensors as dynamic for compiled model."""
-        torch._dynamo.decorators.mark_unbacked(batch["batch_idx"], 0)
-        torch._dynamo.decorators.mark_unbacked(batch["cls"], 0)
-        torch._dynamo.decorators.mark_unbacked(batch["bboxes"], 0)
+        torch._dynamo.maybe_mark_dynamic(batch["batch_idx"], 0)
+        torch._dynamo.maybe_mark_dynamic(batch["cls"], 0)
+        torch._dynamo.maybe_mark_dynamic(batch["bboxes"], 0)

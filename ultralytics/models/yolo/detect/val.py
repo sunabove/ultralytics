@@ -276,10 +276,10 @@ class DetectionValidator(BaseValidator):
     def mark_dynamic(self, batch):
         """Mark tensors as dynamic for compiled model."""
         if self.args.rect or self.training:
-            torch._dynamo.decorators.mark_unbacked(batch["img"], [2, 3])
-        torch._dynamo.decorators.mark_unbacked(batch["batch_idx"], 0)
-        torch._dynamo.decorators.mark_unbacked(batch["cls"], 0)
-        torch._dynamo.decorators.mark_unbacked(batch["bboxes"], 0)
+            torch._dynamo.maybe_mark_dynamic(batch["img"], [2, 3])
+        torch._dynamo.maybe_mark_dynamic(batch["batch_idx"], 0)
+        torch._dynamo.maybe_mark_dynamic(batch["cls"], 0)
+        torch._dynamo.maybe_mark_dynamic(batch["bboxes"], 0)
 
     def build_dataset(self, img_path: str, mode: str = "val", batch: int | None = None) -> torch.utils.data.Dataset:
         """
