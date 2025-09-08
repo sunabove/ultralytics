@@ -172,6 +172,11 @@ class PoseValidator(DetectionValidator):
         pbatch["keypoints"] = kpts
         return pbatch
 
+    def mark_dynamic(self, batch):
+        """Mark tensors as dynamic for compiled model."""
+        super().mark_dynamic(batch)
+        torch._dynamo.maybe_mark_dynamic(batch["keypoints"], 0)
+
     def _process_batch(self, preds: dict[str, torch.Tensor], batch: dict[str, Any]) -> dict[str, np.ndarray]:
         """
         Return correct prediction matrix by computing Intersection over Union (IoU) between detections and ground truth.

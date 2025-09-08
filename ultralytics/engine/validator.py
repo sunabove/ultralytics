@@ -148,8 +148,6 @@ class BaseValidator:
             # Force FP16 val during training
             self.args.half = self.device.type != "cpu" and trainer.amp
             model = trainer.ema.ema or trainer.model
-            if trainer.args.compile and hasattr(model, "_orig_mod"):
-                model = model._orig_mod  # validate non-compiled original model to avoid issues
             model = model.half() if self.args.half else model.float()
             self.loss = torch.zeros_like(trainer.loss_items, device=trainer.device)
             self.args.plots &= trainer.stopper.possible_stop or (trainer.epoch == trainer.epochs - 1)
@@ -208,6 +206,11 @@ class BaseValidator:
             # Preprocess
             with dt[0]:
                 batch = self.preprocess(batch)
+            
+            # Optimize batch for compiled model
+            metadata = {k: batch.pop(k, None) for k in ["im_file", "ori_shape", "resized_shape", "ratio_pad"]}
+            if self.args.compile:
+                self.mark_dynamic(batch)
 
             # Inference
             with dt[1]:
@@ -222,6 +225,7 @@ class BaseValidator:
             with dt[3]:
                 preds = self.postprocess(preds)
 
+            batch = {**batch, **metadata}
             self.update_metrics(preds, batch)
             if self.args.plots and batch_i < 3:
                 self.plot_val_samples(batch, batch_i)
@@ -251,6 +255,10 @@ class BaseValidator:
             if self.args.plots or self.args.save_json:
                 LOGGER.info(f"Results saved to {colorstr('bold', self.save_dir)}")
             return stats
+    
+    def mark_dynamic(self, batch):
+        """Mark tensors as dynamic for compiled model."""
+        pass
 
     def match_predictions(
         self, pred_classes: torch.Tensor, true_classes: torch.Tensor, iou: torch.Tensor, use_scipy: bool = False
