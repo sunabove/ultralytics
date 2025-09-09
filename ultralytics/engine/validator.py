@@ -208,9 +208,18 @@ class BaseValidator:
                 batch = self.preprocess(batch)
             
             # Optimize batch for compiled model
-            metadata = {k: batch.pop(k, None) for k in ["im_file", "ori_shape", "resized_shape", "ratio_pad"]}
-            if self.args.compile:
+            if self.args.compile and self.args.task != "classify":
                 self.mark_dynamic(batch)
+                if self.training:
+                    head = model.model[-1]
+                else:
+                    head = model.model.model[-1]
+                feat_shapes = tuple(zip(*(batch["img"].shape[i] / head.stride for i in range(2,4))))
+                from ultralytics.utils.tal import make_anchors
+                anchors, strides = (x.transpose(0, 1) for x in make_anchors(feat_shapes, head.stride, device=batch["img"].device, dtype=batch["img"].dtype))
+                torch._dynamo.mark_dynamic(anchors, 1)
+                torch._dynamo.mark_dynamic(strides, 1)
+                head.anchors, head.strides = anchors, strides
 
             # Inference
             with dt[1]:
@@ -225,7 +234,6 @@ class BaseValidator:
             with dt[3]:
                 preds = self.postprocess(preds)
 
-            batch = {**batch, **metadata}
             self.update_metrics(preds, batch)
             if self.args.plots and batch_i < 3:
                 self.plot_val_samples(batch, batch_i)
