@@ -75,8 +75,6 @@ class DetectionValidator(BaseValidator):
             if isinstance(v, torch.Tensor):
                 batch[k] = v.to(self.device, non_blocking=True)
         batch["img"] = (batch["img"].half() if self.args.half else batch["img"].float()) / 255
-        if self.args.compile and (self.args.rect or self.training):
-            torch._dynamo.decorators.mark_unbacked(batch["img"], [2, 3], strict=True)
         return batch
 
     def init_metrics(self, model: torch.nn.Module) -> None:

@@ -152,6 +152,8 @@ class BaseValidator:
             self.loss = torch.zeros_like(trainer.loss_items, device=trainer.device)
             self.args.plots &= trainer.stopper.possible_stop or (trainer.epoch == trainer.epochs - 1)
             model.eval()
+            if self.args.compile:  # forward pass to create anchors
+                model._predict_once(torch.randn(self.args.batch, self.data["channels"], trainer.args.imgsz, trainer.args.imgsz, device=trainer.args.device))
         else:
             if str(self.args.model).endswith(".yaml") and model is None:
                 LOGGER.warning("validating an untrained model YAML will result in 0 mAP.")
@@ -206,19 +208,6 @@ class BaseValidator:
             # Preprocess
             with dt[0]:
                 batch = self.preprocess(batch)
-
-            if self.args.compile and (self.args.rect or self.training) and self.args.task != "classify":
-                from ultralytics.utils.tal import make_anchors
-
-                head = model.model[-1] if self.training else model.model.model[-1]
-                head._inference = head._inference_compiled
-                # Update anchors and strides before forward pass
-                img = batch["img"]
-                feat_shapes = tuple(zip(*(img.shape[i] / head.stride for i in range(2, 4))))
-                anchors, strides = make_anchors(feat_shapes, head.stride, device=img.device, dtype=img.dtype)
-                torch._dynamo.mark_dynamic(anchors, 0)
-                torch._dynamo.mark_dynamic(strides, 0)
-                head.anchors, head.strides = (x.transpose(0, 1) for x in (anchors, strides))
 
             # Inference
             with dt[1]:

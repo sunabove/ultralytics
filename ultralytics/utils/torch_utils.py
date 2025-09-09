@@ -1070,7 +1070,7 @@ def attempt_compile(
     LOGGER.info(f"{prefix} starting torch.compile...")
     t0 = time.perf_counter()
     try:
-        model = torch.compile(model, mode="max-autotune", backend="inductor")
+        model = torch.compile(model, backend="inductor")
     except Exception as e:
         LOGGER.warning(f"{prefix} torch.compile failed, continuing uncompiled: {e}")
         return model
