@@ -206,20 +206,19 @@ class BaseValidator:
             # Preprocess
             with dt[0]:
                 batch = self.preprocess(batch)
-            
-            # Optimize batch for compiled model
-            if self.args.compile and self.args.task != "classify":
-                self.mark_dynamic(batch)
-                if self.training:
-                    head = model.model[-1]
-                else:
-                    head = model.model.model[-1]
-                feat_shapes = tuple(zip(*(batch["img"].shape[i] / head.stride for i in range(2,4))))
+
+            if self.args.compile and (self.args.rect or self.training) and self.args.task != "classify":
                 from ultralytics.utils.tal import make_anchors
-                anchors, strides = (x.transpose(0, 1) for x in make_anchors(feat_shapes, head.stride, device=batch["img"].device, dtype=batch["img"].dtype))
-                torch._dynamo.mark_dynamic(anchors, 1)
-                torch._dynamo.mark_dynamic(strides, 1)
-                head.anchors, head.strides = anchors, strides
+
+                head = model.model[-1] if self.training else model.model.model[-1]
+                head._inference = head._inference_compiled
+                # Update anchors and strides before forward pass
+                img = batch["img"]
+                feat_shapes = tuple(zip(*(img.shape[i] / head.stride for i in range(2, 4))))
+                anchors, strides = make_anchors(feat_shapes, head.stride, device=img.device, dtype=img.dtype)
+                torch._dynamo.mark_dynamic(anchors, 0)
+                torch._dynamo.mark_dynamic(strides, 0)
+                head.anchors, head.strides = (x.transpose(0, 1) for x in (anchors, strides))
 
             # Inference
             with dt[1]:
@@ -263,10 +262,6 @@ class BaseValidator:
             if self.args.plots or self.args.save_json:
                 LOGGER.info(f"Results saved to {colorstr('bold', self.save_dir)}")
             return stats
-    
-    def mark_dynamic(self, batch):
-        """Mark tensors as dynamic for compiled model."""
-        pass
 
     def match_predictions(
         self, pred_classes: torch.Tensor, true_classes: torch.Tensor, iou: torch.Tensor, use_scipy: bool = False

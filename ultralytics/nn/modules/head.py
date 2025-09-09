@@ -149,6 +149,22 @@ class Detect(nn.Module):
         y = self.postprocess(y.permute(0, 2, 1), self.max_det, self.nc)
         return y if self.export else (y, {"one2many": x, "one2one": one2one})
 
+    def _inference_compiled(self, x: list[torch.Tensor]) -> torch.Tensor:
+        """
+        Compiler friendly self._inference.
+
+        Args:
+            x (list[torch.Tensor]): List of feature maps from different detection layers.
+
+        Returns:
+            (torch.Tensor): Concatenated tensor of decoded bounding boxes and class probabilities.
+        """
+        shape = x[0].shape  # BCHW
+        x_cat = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2)
+        box, cls = x_cat.split((self.reg_max * 4, self.nc), 1)
+        dbox = self.decode_bboxes(self.dfl(box), self.anchors.unsqueeze(0)) * self.strides
+        return torch.cat((dbox, cls.sigmoid()), 1)
+
     def _inference(self, x: list[torch.Tensor]) -> torch.Tensor:
         """
         Decode predicted bounding boxes and class probabilities based on multiple-level feature maps.
@@ -162,7 +178,7 @@ class Detect(nn.Module):
         # Inference path
         shape = x[0].shape  # BCHW
         x_cat = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2)
-        if self.format != "imx" and not torch.compiler.is_dynamo_compiling() and (self.dynamic or self.shape != shape):
+        if self.format != "imx" and (self.dynamic or self.shape != shape):
             self.anchors, self.strides = (x.transpose(0, 1) for x in make_anchors(x, self.stride, 0.5))
             self.shape = shape
 
