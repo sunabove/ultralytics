@@ -408,6 +408,7 @@ class ProfileModels:
         imgsz: int = 640,
         half: bool = True,
         trt: bool = True,
+        onnx: bool = True,
         device: torch.device | str | None = None,
     ):
         """
@@ -439,6 +440,7 @@ class ProfileModels:
         self.imgsz = imgsz
         self.half = half
         self.trt = trt  # run TensorRT profiling
+        self.onnx = onnx
         self.device = device if isinstance(device, torch.device) else select_device(device)
 
     def run(self):
@@ -463,12 +465,13 @@ class ProfileModels:
         table_rows = []
         output = []
         for file in files:
-            engine_file = file.with_suffix(".engine")
+            onnx_file = None
+            engine_file = None
             if file.suffix in {".pt", ".yaml", ".yml"}:
                 model = YOLO(str(file))
                 model.fuse()  # to report correct params and GFLOPs in model.info()
                 model_info = model.info()
-                if self.trt and self.device.type != "cpu" and not engine_file.is_file():
+                if self.trt and self.device.type != "cpu":
                     engine_file = model.export(
                         format="engine",
                         half=self.half,
@@ -476,20 +479,25 @@ class ProfileModels:
                         device=self.device,
                         verbose=False,
                     )
-                onnx_file = model.export(
-                    format="onnx",
-                    imgsz=self.imgsz,
-                    device=self.device,
-                    verbose=False,
-                )
+                if self.onnx:
+                    onnx_file = model.export(
+                        format="onnx",
+                        imgsz=self.imgsz,
+                        device=self.device,
+                        verbose=False,
+                    )
             elif file.suffix == ".onnx":
                 model_info = self.get_onnx_model_info(file)
                 onnx_file = file
+            elif file.suffix == ".engine":
+                model_info = self.get_tensorrt_model_info(file)
+                engine_file = file
             else:
                 continue
 
-            t_engine = self.profile_tensorrt_model(str(engine_file))
-            t_onnx = self.profile_onnx_model(str(onnx_file))
+            t_engine = self.profile_tensorrt_model(str(engine_file)) if engine_file is not None else None
+            t_onnx = self.profile_onnx_model(str(onnx_file)) if onnx_file is not None else None
+
             table_rows.append(self.generate_table_row(file.stem, t_onnx, t_engine, model_info))
             output.append(self.generate_results_dict(file.stem, t_onnx, t_engine, model_info))
 
@@ -520,6 +528,11 @@ class ProfileModels:
     @staticmethod
     def get_onnx_model_info(onnx_file: str):
         """Extract metadata from an ONNX model file including parameters, GFLOPs, and input shape."""
+        return 0.0, 0.0, 0.0, 0.0  # return (num_layers, num_params, num_gradients, num_flops)
+
+    @staticmethod
+    def get_tensorrt_model_info(onnx_file: str):
+        """Extract metadata from an TensorRT model file including parameters, GFLOPs, and input shape."""
         return 0.0, 0.0, 0.0, 0.0  # return (num_layers, num_params, num_gradients, num_flops)
 
     @staticmethod
@@ -651,8 +664,8 @@ class ProfileModels:
     def generate_table_row(
         self,
         model_name: str,
-        t_onnx: tuple[float, float],
-        t_engine: tuple[float, float],
+        t_onnx: tuple[float, float] | None,
+        t_engine: tuple[float, float] | None,
         model_info: tuple[float, float, float, float],
     ):
         """
@@ -668,16 +681,18 @@ class ProfileModels:
             (str): Formatted table row string with model metrics.
         """
         layers, params, gradients, flops = model_info
+        onnx_info = f"{t_onnx[0]:.1f}±{t_onnx[1]:.1f} ms" if t_onnx is not None else "-"
+        engine_info = f"{t_engine[0]:.1f}±{t_engine[1]:.1f} ms" if t_engine is not None else "-"
         return (
-            f"| {model_name:18s} | {self.imgsz} | - | {t_onnx[0]:.1f}±{t_onnx[1]:.1f} ms | {t_engine[0]:.1f}±"
-            f"{t_engine[1]:.1f} ms | {params / 1e6:.1f} | {flops:.1f} |"
+            f"| {model_name:18s} | {self.imgsz} | - | {onnx_info} | {engine_info} "
+            f"| {params / 1e6:.1f} | {flops:.1f} |"
         )
 
     @staticmethod
     def generate_results_dict(
         model_name: str,
-        t_onnx: tuple[float, float],
-        t_engine: tuple[float, float],
+        t_onnx: tuple[float, float] | None,
+        t_engine: tuple[float, float] | None,
         model_info: tuple[float, float, float, float],
     ):
         """
@@ -697,8 +712,8 @@ class ProfileModels:
             "model/name": model_name,
             "model/parameters": params,
             "model/GFLOPs": round(flops, 3),
-            "model/speed_ONNX(ms)": round(t_onnx[0], 3),
-            "model/speed_TensorRT(ms)": round(t_engine[0], 3),
+            "model/speed_ONNX(ms)": round(t_onnx[0], 3) if t_onnx is not None else None,
+            "model/speed_TensorRT(ms)": round(t_engine[0], 3) if t_engine is not None else None,
         }
 
     @staticmethod
