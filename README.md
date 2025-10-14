@@ -188,30 +188,5 @@ Check the [OBB Docs](https://docs.ultralytics.com/tasks/obb/) for usage examples
 - **mAP<sup>test</sup>** values are for single-model multiscale performance on the [DOTAv1 test set](https://captain-whu.github.io/DOTA/dataset.html). <br>Reproduce by `yolo val obb data=DOTAv1.yaml device=0 split=test` and submit merged results to the [DOTA evaluation server](https://captain-whu.github.io/DOTA/evaluation.html).
 - **Speed** metrics are averaged over [DOTAv1 val images](https://docs.ultralytics.com/datasets/obb/dota-v2/#dota-v10) using an [Amazon EC2 P4d](https://aws.amazon.com/ec2/instance-types/p4/) instance. CPU speeds measured with [ONNX](https://onnx.ai/) export. GPU speeds measured with [TensorRT](https://developer.nvidia.com/tensorrt) export. <br>Reproduce by `yolo val obb data=DOTAv1.yaml batch=1 device=0|cpu`
 
-</details>
-
-## 🧩 Integrations
-
-Our key integrations with leading AI platforms extend the functionality of Ultralytics' offerings, enhancing tasks like dataset labeling, training, visualization, and model management. Discover how Ultralytics, in collaboration with partners like [Weights & Biases](https://docs.ultralytics.com/integrations/weights-biases/), [Comet ML](https://docs.ultralytics.com/integrations/comet/), [Roboflow](https://docs.ultralytics.com/integrations/roboflow/), and [Intel OpenVINO](https://docs.ultralytics.com/integrations/openvino/), can optimize your AI workflow. Explore more at [Ultralytics Integrations](https://docs.ultralytics.com/integrations/).
-
-<a href="https://docs.ultralytics.com/integrations/" target="_blank">
-    <img width="100%" src="https://github.com/ultralytics/assets/raw/main/yolov8/banner-integrations.png" alt="Ultralytics active learning integrations">
-</a>
-<br>
-<br>
-
-<div align="center">
-  <a href="https://www.ultralytics.com/hub">
-    <img src="https://github.com/ultralytics/assets/raw/main/partners/logo-ultralytics-hub.png" width="10%" alt="Ultralytics HUB logo"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="15%" height="0" alt="space">
-  <a href="https://docs.ultralytics.com/integrations/weights-biases/">
-    <img src="https://github.com/ultralytics/assets/raw/main/partners/logo-wb.png" width="10%" alt="Weights & Biases logo"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="15%" height="0" alt="space">
-  <a href="https://docs.ultralytics.com/integrations/comet/">
-    <img src="https://github.com/ultralytics/assets/raw/main/partners/logo-comet.png" width="10%" alt="Comet ML logo"></a>
-  <img src="https://github.com/ultralytics/assets/raw/main/social/logo-transparent.png" width="15%" height="0" alt="space">
-  <a href="https://docs.ultralytics.com/integrations/neural-magic/">
-    <img src="https://github.com/ultralytics/assets/raw/main/partners/logo-neuralmagic.png" width="10%" alt="Neural Magic logo"></a>
-</div> 
- 
+</details> 
  
