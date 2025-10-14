@@ -38,10 +38,7 @@ Install the `ultralytics` package, including all [requirements](https://github.c
 
 ```bash
 pip install ultralytics
-```
-
-For alternative installation methods, including [Conda](https://anaconda.org/conda-forge/ultralytics), [Docker](https://hub.docker.com/r/ultralytics/ultralytics), and building from source via Git, please consult the [Quickstart Guide](https://docs.ultralytics.com/quickstart/). 
-
+``` 
 </details>
 
 <details open>
